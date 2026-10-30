@@ -20,7 +20,7 @@
 
 - Contratação: setup inicial para diagnóstico, preparação e personalização; mensalidade para suporte e manutenção conforme escopo.
 - Preço: proposta personalizada; não há preço público único.
-- Contato comercial: WhatsApp +55 85 98239-5079.
+- Contato comercial: formulário em /index.html#formulario.
 - Landing page: /index.html
 - Informações de contratação: /pricing.md
 

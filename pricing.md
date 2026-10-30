@@ -27,4 +27,4 @@ A proposta personalizada esclarece infraestrutura, consumo de modelos, integraç
 
 ## Contato comercial
 
-Para solicitar uma proposta: [WhatsApp da grapeos](https://wa.me/5585982395079).
+Para solicitar uma proposta: [formulário de contato](./index.html#formulario).

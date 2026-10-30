@@ -345,6 +345,34 @@ if (productivityChartContainer) {
 
 const cookieBanner = document.querySelector('.cookie-banner');
 const cookieConsentKey = 'grapeos-cookie-consent';
+const campaignStorageKey = 'grapeos-campaign';
+const campaignClickIds = new Set(['gclid', 'gbraid', 'wbraid', 'fbclid', 'msclkid', 'ttclid', 'li_fat_id']);
+const campaignFromUrl = {};
+
+for (const [key, value] of new URLSearchParams(window.location.search)) {
+  const name = key.toLowerCase();
+  if (value && (/^utm_[a-z0-9_]+$/.test(name) || campaignClickIds.has(name))) {
+    campaignFromUrl[name] = value;
+  }
+}
+
+let campaign = campaignFromUrl;
+try {
+  if (window.localStorage.getItem(cookieConsentKey) === 'all') {
+    if (Object.keys(campaignFromUrl).length) {
+      window.sessionStorage.setItem(campaignStorageKey, JSON.stringify(campaignFromUrl));
+    } else {
+      const storedCampaign = JSON.parse(window.sessionStorage.getItem(campaignStorageKey) || '{}');
+      if (storedCampaign && typeof storedCampaign === 'object' && !Array.isArray(storedCampaign)) {
+        campaign = storedCampaign;
+      }
+    }
+  } else {
+    window.sessionStorage.removeItem(campaignStorageKey);
+  }
+} catch {
+  // Campaign parameters from the current URL remain available if storage is blocked.
+}
 
 if (cookieBanner) {
   try {
@@ -359,6 +387,13 @@ if (cookieBanner) {
     button.addEventListener('click', () => {
       const consent = button.dataset.cookieConsent;
       try { window.localStorage.setItem(cookieConsentKey, consent); } catch {}
+      try {
+        if (consent === 'all' && Object.keys(campaign).length) {
+          window.sessionStorage.setItem(campaignStorageKey, JSON.stringify(campaign));
+        } else {
+          window.sessionStorage.removeItem(campaignStorageKey);
+        }
+      } catch {}
       document.documentElement.dataset.cookieConsent = consent;
       cookieBanner.hidden = true;
     });
@@ -366,20 +401,28 @@ if (cookieBanner) {
 }
 
 const form = document.querySelector('.lead-form');
-form.addEventListener('submit', (event) => {
+form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const data = new FormData(form);
-  const message = [
-    'Olá! Conheci a Grapeos e quero montar uma equipe autônoma de IA para minha empresa.',
-    '',
-    `*Nome:* ${data.get('nome')}`,
-    `*Empresa:* ${data.get('empresa')}`,
-    `*E-mail:* ${data.get('email')}`,
-    `*Área de interesse:* ${data.get('area')}`,
-    `*Necessidade principal:* ${data.get('necessidade')}`
-  ].join('\n');
-  const whatsappUrl = `https://wa.me/5585982395079?text=${encodeURIComponent(message)}`;
   const status = form.querySelector('.form-status');
-  status.textContent = 'Abrindo o WhatsApp para enviar sua solicitação.';
-  window.open(whatsappUrl, '_blank', 'noopener');
+  const submitButton = form.querySelector('[type="submit"]');
+  submitButton.disabled = true;
+  status.textContent = 'Enviando sua solicitação...';
+
+  try {
+    const data = new URLSearchParams(new FormData(form));
+    for (const [key, value] of Object.entries(campaign)) {
+      if (!data.has(key)) data.append(key, value);
+    }
+    const response = await fetch('https://n8n.saltfix.com.br/webhook/leads-landing-integracoes', {
+      method: 'POST',
+      body: data
+    });
+    if (!response.ok) throw new Error('Falha no envio');
+    form.reset();
+    status.textContent = 'Solicitação enviada! Entraremos em contato em breve.';
+  } catch {
+    status.textContent = 'Não foi possível enviar sua solicitação. Tente novamente.';
+  } finally {
+    submitButton.disabled = false;
+  }
 });
